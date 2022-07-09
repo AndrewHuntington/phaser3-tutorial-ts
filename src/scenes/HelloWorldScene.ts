@@ -6,6 +6,13 @@ export default class HelloWorldScene extends Phaser.Scene {
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private stars?: Phaser.Physics.Arcade.Group;
 
+  private score = 0;
+  private scoreText?: Phaser.GameObjects.Text;
+
+  private bombs?: Phaser.Physics.Arcade.Group;
+
+  private gameOver = false;
+
   constructor() {
     super("hello-world");
   }
@@ -84,6 +91,32 @@ export default class HelloWorldScene extends Phaser.Scene {
       undefined,
       this
     );
+
+    this.scoreText = this.add.text(16, 16, "Score: 0", {
+      fontSize: "32px",
+      color: "#000",
+    });
+
+    this.bombs = this.physics.add.group();
+    this.physics.add.collider(this.bombs, this.platforms);
+    this.physics.add.collider(
+      this.player,
+      this.bombs,
+      this.handleHitBomb,
+      undefined,
+      this
+    );
+  }
+
+  private handleHitBomb(
+    player: Phaser.GameObjects.GameObject,
+    b: Phaser.GameObjects.GameObject
+  ) {
+    this.physics.pause();
+
+    this.player?.setTint(0xff0000);
+    this.player?.anims.play("turn");
+    this.gameOver = true;
   }
 
   private handleCollectStar(
@@ -92,6 +125,33 @@ export default class HelloWorldScene extends Phaser.Scene {
   ) {
     const star = s as Phaser.Physics.Arcade.Image;
     star.disableBody(true, true);
+
+    this.score += 10;
+    this.scoreText?.setText(`Score: ${this.score}`);
+
+    if (this.stars?.countActive(true) === 0) {
+      this.stars.children.iterate((c) => {
+        const child = c as Phaser.Physics.Arcade.Image;
+        child.enableBody(true, child.x, 0, true, true);
+      });
+
+      if (this.player) {
+        const x =
+          this.player.x < 400
+            ? Phaser.Math.Between(400, 800)
+            : Phaser.Math.Between(0, 400);
+
+        const bomb: Phaser.Physics.Arcade.Image = this.bombs?.create(
+          x,
+          16,
+          "bomb"
+        );
+
+        bomb.setBounce(1);
+        bomb.setCollideWorldBounds(true);
+        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+      }
+    }
   }
 
   update() {
